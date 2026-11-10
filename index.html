@@ -4,8 +4,102 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>CheckStudio Pro</title>
-    <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Caveat:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0f0f11;
+            --surface: #1c1c1f;
+            --surface-hover: #2a2a2e;
+            --border: #333;
+            --text: #ffffff;
+            --text-muted: #888;
+            --accent: #4CAF50;
+            --accent-hover: #45a049;
+            --blue: #117ACA;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+        body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; height: 100vh; overflow: hidden; }
+
+        /* Screens */
+        .screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; background: var(--bg); transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); z-index: 10; }
+        .screen.active { transform: translateX(0); }
+        #screen-dashboard { transform: translateX(0); z-index: 5; }
+        #screen-dashboard.hidden { transform: translateX(-30%); opacity: 0.5; }
+
+        /* Headers */
+        .app-header, .editor-header { padding: 24px 20px; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; }
+        .app-header { flex-direction: column; align-items: flex-start; padding-top: 40px; }
+        .app-header h1 { font-size: 28px; font-weight: 700; margin-bottom: 4px; }
+        .app-header p { color: var(--text-muted); font-size: 14px; }
+        .editor-header { justify-content: space-between; padding: 16px 20px; }
+        .editor-title { font-weight: 600; font-size: 16px; }
+        .icon-btn { background: none; border: none; color: white; font-size: 20px; cursor: pointer; padding: 8px; }
+
+        /* Dashboard */
+        .dashboard-grid { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+        .template-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; transition: background 0.2s; }
+        .template-card:active { background: var(--surface-hover); }
+        .template-card .name { font-weight: 600; font-size: 16px; }
+        .template-card .type { font-size: 12px; color: var(--text-muted); }
+        .dashboard-footer { padding: 20px; background: var(--surface); border-top: 1px solid var(--border); padding-bottom: env(safe-area-inset-bottom); }
+
+        /* Buttons */
+        .btn { padding: 14px 20px; border-radius: 8px; border: none; font-weight: 600; font-size: 15px; cursor: pointer; }
+        .btn.primary { background: var(--accent); color: #000; }
+        .btn.full-width { width: 100%; }
+
+        /* Editor */
+        .canvas-workspace { flex: 1; display: flex; justify-content: center; align-items: center; background: #000; overflow: hidden; padding: 16px; touch-action: none; }
+        .paper-container { position: relative; background: #fff; box-shadow: 0 8px 30px rgba(0,0,0,0.6); transform-origin: center; }
+        canvas { display: block; }
+
+        /* Draggable Fields */
+        .overlay { position: absolute; border: 1.5px dashed transparent; cursor: move; padding: 4px; touch-action: none; border-radius: 4px; }
+        .overlay.selected { border-color: var(--blue); background: rgba(17, 122, 202, 0.15); }
+        .overlay .text { white-space: pre; display: block; pointer-events: none; }
+        .overlay .resize-dot { position: absolute; right: -6px; bottom: -6px; width: 16px; height: 16px; background: var(--blue); border-radius: 50%; display: none; }
+        .overlay.selected .resize-dot { display: block; }
+
+        /* Floating Toolbar */
+        .floating-toolbar { position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--surface); padding: 8px; border-radius: 24px; display: flex; gap: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); border: 1px solid var(--border); }
+        .floating-toolbar button { background: transparent; color: white; border: none; padding: 10px 20px; font-weight: 600; border-radius: 16px; cursor: pointer; font-size: 14px; }
+        .floating-toolbar button.primary { background: var(--accent); color: #000; }
+
+        /* Bottom Sheet */
+        .drawer-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); opacity: 0; pointer-events: none; transition: opacity 0.3s; z-index: 20; }
+        .drawer-overlay.active { opacity: 1; pointer-events: auto; }
+        .bottom-sheet { position: fixed; bottom: 0; left: 0; width: 100%; background: var(--surface); border-radius: 20px 20px 0 0; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); z-index: 30; padding-bottom: env(safe-area-inset-bottom); max-height: 80vh; overflow-y: auto; }
+        .bottom-sheet.open { transform: translateY(0); }
+        .sheet-handle { width: 40px; height: 5px; background: #444; border-radius: 3px; margin: 12px auto; }
+        .sheet-content { padding: 20px; }
+        .sheet-content h3 { font-size: 18px; margin-bottom: 16px; }
+
+        /* Forms */
+        .control-group { margin-bottom: 16px; }
+        .control-group label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
+        .control-group input[type="text"], .control-group input[type="number"], .control-group select { width: 100%; background: #000; border: 1px solid var(--border); color: white; padding: 12px; border-radius: 8px; font-size: 16px; font-family: inherit; }
+        .control-group input[type="color"] { width: 100%; height: 48px; border: none; border-radius: 8px; background: none; padding: 0; cursor: pointer; }
+        .control-group input[type="file"] { font-size: 14px; }
+        .control-row { display: flex; gap: 12px; }
+        .control-row > * { flex: 1; }
+
+        /* Preview */
+        .preview-workspace { flex: 1; background: #000; display: flex; justify-content: center; align-items: center; padding: 20px; overflow: hidden; }
+        .preview-workspace img { max-width: 100%; max-height: 100%; object-fit: contain; box-shadow: 0 8px 30px rgba(0,0,0,0.8); border-radius: 4px; }
+
+        @media print {
+            body * { visibility: hidden; }
+            #screen-editor, #screen-editor canvas { visibility: visible; }
+            #screen-editor { position: absolute; left: 0; top: 0; width: 100%; height: auto; overflow: visible; }
+            .canvas-workspace { position: absolute; left: 0; top: 0; padding: 0; display: block; }
+            .paper-container { transform: none !important; box-shadow: none !important; }
+            .overlay { border: none !important; }
+            .overlay .resize-dot { display: none !important; }
+            .editor-header, .floating-toolbar { display: none !important; }
+            @page { size: var(--page-size); margin: 0; }
+        }
+    </style>
 </head>
 <body>
 
@@ -15,11 +109,9 @@
             <h1>CheckStudio</h1>
             <p>Select a template to begin</p>
         </header>
-        <div class="dashboard-grid" id="templateGrid">
-            <!-- Templates injected via JS -->
-        </div>
+        <div class="dashboard-grid" id="templateGrid"></div>
         <div class="dashboard-footer">
-            <button class="btn primary full-width" onclick="startBlank()">+ Create Blank Check</button>
+            <button class="btn primary full-width" onclick="openEditor('blank')">+ Create Blank Check</button>
         </div>
     </div>
 
@@ -37,19 +129,19 @@
             </div>
         </div>
 
-        <!-- Floating Bottom Bar -->
         <div class="floating-toolbar">
             <button onclick="flipCheck()">Flip</button>
-            <button onclick="openDrawer('settings')">Settings</button>
+            <button onclick="openSettings()">Settings</button>
             <button class="primary" onclick="window.print()">Print</button>
         </div>
     </div>
 
-    <!-- PROPERTIES DRAWER (Bottom Sheet) -->
+    <!-- PROPERTIES DRAWER -->
     <div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
     <div class="bottom-sheet" id="bottomSheet">
         <div class="sheet-handle"></div>
         
+        <!-- Field Edit Controls -->
         <div class="sheet-content" id="sheetFieldControls">
             <h3>Edit Field</h3>
             <div class="control-group">
@@ -76,14 +168,15 @@
             </div>
         </div>
 
+        <!-- Settings Controls -->
         <div class="sheet-content" id="sheetSettingsControls" style="display:none;">
             <h3>Check Settings</h3>
             <div class="control-group">
-                <label>Background Image</label>
+                <label>Background Image (Full Check)</label>
                 <input type="file" accept="image/*" onchange="uploadImg(event, 'bg')">
             </div>
             <div class="control-group">
-                <label>Logo Image</label>
+                <label>Logo Image (Top Left)</label>
                 <input type="file" accept="image/*" onchange="uploadImg(event, 'logo')">
             </div>
             <div class="control-group">
@@ -107,6 +200,297 @@
         </div>
     </div>
 
-    <script src="app.js"></script>
+    <script>
+        // --- State ---
+        let state = {
+            bank: 'chase',
+            isBack: false,
+            fields: {},
+            bgImg: null,
+            logoImg: null,
+            microprint: false,
+            voidMark: false,
+            activeField: null
+        };
+
+        const banks = {
+            chase: { name: 'JPMorgan Chase', color: '#117ACA', addr: '270 Park Ave, NY' },
+            wells: { name: 'WELLS FARGO', color: '#D71E28', addr: '420 Montgomery St, SF' },
+            boa: { name: 'Bank of America', color: '#E31837', addr: '100 N Tryon St, Charlotte' },
+            citi: { name: 'Citibank', color: '#003B70', addr: '388 Greenwich St, NY' },
+            ally: { name: 'ally', color: '#6B2D5B', addr: 'Horsham, PA' },
+            blank: { name: 'Bank Name', color: '#000000', addr: 'Bank Address' }
+        };
+
+        // --- Dashboard Init ---
+        function initDashboard() {
+            const grid = document.getElementById('templateGrid');
+            grid.innerHTML = '';
+            Object.keys(banks).forEach(key => {
+                if (key === 'blank') return;
+                const div = document.createElement('div');
+                div.className = 'template-card';
+                div.innerHTML = `
+                    <div>
+                        <div class="name">${banks[key].name}</div>
+                        <div class="type">Standard Check</div>
+                    </div>
+                    <div style="color: ${banks[key].color}; font-size: 24px;">→</div>
+                `;
+                div.onclick = () => openEditor(key);
+                grid.appendChild(div);
+            });
+        }
+
+        // --- Navigation ---
+        function openEditor(bankKey) {
+            state.bank = bankKey;
+            loadBankTemplate();
+            
+            document.getElementById('screen-dashboard').classList.add('hidden');
+            document.getElementById('screen-editor').classList.add('active');
+            document.getElementById('editorTitle').innerText = banks[bankKey].name;
+            
+            setTimeout(resizeCanvas, 50);
+        }
+
+        function goHome() {
+            document.getElementById('screen-editor').classList.remove('active');
+            document.getElementById('screen-dashboard').classList.remove('hidden');
+        }
+
+        function openPreview() {
+            renderCanvas();
+            const canvas = document.getElementById('checkCanvas');
+            document.getElementById('previewImg').src = canvas.toDataURL('image/png');
+            document.getElementById('screen-preview').classList.add('active');
+        }
+
+        function closePreview() {
+            document.getElementById('screen-preview').classList.remove('active');
+        }
+
+        // --- Drawers ---
+        function openSettings() {
+            document.getElementById('sheetFieldControls').style.display = 'none';
+            document.getElementById('sheetSettingsControls').style.display = 'block';
+            document.getElementById('drawerOverlay').classList.add('active');
+            document.getElementById('bottomSheet').classList.add('open');
+        }
+
+        function openFieldDrawer(key) {
+            state.activeField = key;
+            document.getElementById('sheetFieldControls').style.display = 'block';
+            document.getElementById('sheetSettingsControls').style.display = 'none';
+            document.getElementById('drawerOverlay').classList.add('active');
+            document.getElementById('bottomSheet').classList.add('open');
+            
+            const data = state.fields[key];
+            document.getElementById('inputText').value = data.text;
+            document.getElementById('inputSize').value = data.size;
+            document.getElementById('inputColor').value = data.color;
+            document.getElementById('inputFont').value = data.font;
+        }
+
+        function closeDrawer() {
+            document.getElementById('drawerOverlay').classList.remove('active');
+            document.getElementById('bottomSheet').classList.remove('open');
+            state.activeField = null;
+            document.querySelectorAll('.overlay').forEach(e => e.classList.remove('selected'));
+        }
+
+        // --- Canvas Rendering ---
+        const defaults = {
+            bankName: { x: 0.25, y: 0.35, text: '', font: 'Inter', size: 20, color: '#000', bold: true },
+            bankAddr: { x: 0.25, y: 0.50, text: '', font: 'Inter', size: 9, color: '#444' },
+            checkNo: { x: 5.5, y: 0.35, text: '1001', font: 'Inter', size: 10, color: '#000' },
+            date: { x: 4.7, y: 0.35, text: 'MM/DD/YYYY', font: 'Inter', size: 11, color: '#000' },
+            payee: { x: 1.5, y: 0.85, text: '', font: 'Inter', size: 12, color: '#000' },
+            amountNum: { x: 4.8, y: 0.85, text: '$', font: 'Inter', size: 14, color: '#000' },
+            amountWords: { x: 1.5, y: 1.15, text: 'Zero', font: 'Inter', size: 11, color: '#000' },
+            memo: { x: 0.70, y: 1.85, text: '', font: 'Inter', size: 10, color: '#000' },
+            sigLine: { x: 4.5, y: 1.85, text: 'AUTHORIZED', font: 'Inter', size: 8, color: '#000' },
+            micr: { x: 0.25, y: 2.45, text: '⑆000000000⑆ ⑈0000000000⑈ ⑆1001', font: "'Courier New'", size: 14, color: '#000', bold: true }
+        };
+
+        function loadBankTemplate() {
+            const b = banks[state.bank];
+            state.fields = JSON.parse(JSON.stringify(defaults));
+            state.fields.bankName.text = b.name;
+            state.fields.bankName.color = b.color;
+            state.fields.bankAddr.text = b.addr;
+            state.isBack = false;
+            
+            buildOverlays();
+            renderCanvas();
+        }
+
+        function resizeCanvas() {
+            const workspace = document.getElementById('canvasWorkspace');
+            const container = document.getElementById('paperContainer');
+            const canvas = document.getElementById('checkCanvas');
+            
+            const wIn = 6, hIn = 2.75, dpi = 300;
+            canvas.width = wIn * dpi;
+            canvas.height = hIn * dpi;
+            
+            const scale = Math.min(
+                (workspace.clientWidth - 32) / canvas.width,
+                (workspace.clientHeight - 32) / canvas.height
+            );
+            
+            container.style.width = canvas.width + 'px';
+            container.style.height = canvas.height + 'px';
+            container.style.transform = `scale(${scale})`;
+            
+            document.documentElement.style.setProperty('--page-size', `${wIn}in ${hIn}in`);
+        }
+
+        function renderCanvas() {
+            const canvas = document.getElementById('checkCanvas');
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width, h = canvas.height, scale = 300;
+
+            ctx.clearRect(0, 0, w, h);
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(0, 0, w, h);
+
+            if (state.bgImg) ctx.drawImage(state.bgImg, 0, 0, w, h);
+
+            if (!state.isBack) {
+                ctx.strokeStyle = '#ccc';
+                ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.moveTo(1.5*scale, 0.9*scale); ctx.lineTo(4.5*scale, 0.9*scale); ctx.stroke();
+                ctx.strokeRect(4.7*scale, 0.65*scale, 0.9*scale, 0.3*scale);
+                ctx.beginPath(); ctx.moveTo(1.5*scale, 1.2*scale); ctx.lineTo(4.5*scale, 1.2*scale); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(0.7*scale, 1.9*scale); ctx.lineTo(2.5*scale, 1.9*scale); ctx.stroke();
+                ctx.strokeStyle = '#000';
+                ctx.beginPath(); ctx.moveTo(4.5*scale, 1.95*scale); ctx.lineTo((w/scale)-0.25*scale, 1.95*scale); ctx.stroke();
+
+                if (state.logoImg) ctx.drawImage(state.logoImg, 0.25*scale, 0.1*scale, 120, 60);
+                if (state.microprint) {
+                    ctx.font = '4px Inter'; ctx.fillStyle = '#888';
+                    ctx.fillText('MICROPRINT SECURITY '.repeat(30), 20, 20);
+                }
+                if (state.voidMark) {
+                    ctx.save(); ctx.translate(w/2, h/2); ctx.rotate(-0.5); ctx.font = 'bold 100px Inter'; ctx.fillStyle = 'rgba(255,0,0,0.2)'; ctx.textAlign = 'center'; ctx.fillText('VOID', 0, 0); ctx.restore();
+                }
+            } else {
+                ctx.fillStyle = '#000';
+                ctx.font = 'bold 40px Inter';
+                ctx.fillText('ENDORSE HERE', 0.25*300, 0.6*300);
+                ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.moveTo(0.25*300, 0.7*300); ctx.lineTo((w/300 - 0.25)*300, 0.7*300); ctx.stroke();
+                ctx.font = '20px Inter';
+                ctx.fillText('DO NOT WRITE, STAMP OR SIGN BELOW THIS LINE', 0.25*300, 1.2*300);
+            }
+        }
+
+        // --- Interactive Overlays ---
+        function buildOverlays() {
+            const container = document.getElementById('paperContainer');
+            document.querySelectorAll('.overlay').forEach(e => e.remove());
+
+            Object.keys(state.fields).forEach(key => {
+                const data = state.fields[key];
+                const el = document.createElement('div');
+                el.className = 'overlay';
+                el.id = 'ov_' + key;
+                el.style.left = (data.x * 300) + 'px';
+                el.style.top = (data.y * 300) + 'px';
+
+                const txt = document.createElement('span');
+                txt.className = 'text';
+                txt.innerText = data.text;
+                txt.style.fontFamily = data.font;
+                txt.style.fontSize = (data.size * 300 / 72) + 'px';
+                txt.style.color = data.color;
+                txt.style.fontWeight = data.bold ? 'bold' : 'normal';
+
+                const dot = document.createElement('div');
+                dot.className = 'resize-dot';
+
+                el.appendChild(txt);
+                el.appendChild(dot);
+                container.appendChild(el);
+
+                // Drag logic (Touch)
+                let startX, startY, origX, origY, dragging = false;
+
+                el.addEventListener('touchstart', e => {
+                    if (e.target === dot) return;
+                    dragging = true;
+                    startX = e.touches[0].clientX;
+                    startY = e.touches[0].clientY;
+                    origX = data.x;
+                    origY = data.y;
+                    
+                    document.querySelectorAll('.overlay').forEach(ov => ov.classList.remove('selected'));
+                    el.classList.add('selected');
+                    openFieldDrawer(key);
+                }, {passive: false});
+
+                window.addEventListener('touchmove', e => {
+                    if (!dragging) return;
+                    const scale = getScale();
+                    data.x = origX + ((e.touches[0].clientX - startX) / (300 * scale));
+                    data.y = origY + ((e.touches[0].clientY - startY) / (300 * scale));
+                    el.style.left = (data.x * 300) + 'px';
+                    el.style.top = (data.y * 300) + 'px';
+                    e.preventDefault();
+                }, {passive: false});
+
+                window.addEventListener('touchend', () => dragging = false);
+            });
+        }
+
+        function getScale() {
+            const transform = document.getElementById('paperContainer').style.transform;
+            const match = transform.match(/scale\(([^)]+)\)/);
+            return match ? parseFloat(match[1]) : 1;
+        }
+
+        function updateField(prop, val) {
+            if (!state.activeField) return;
+            const data = state.fields[state.activeField];
+            const span = document.querySelector(`#ov_${state.activeField} .text`);
+            
+            if (prop === 'text') { data.text = val; span.innerText = val; }
+            if (prop === 'size') { data.size = parseFloat(val); span.style.fontSize = (data.size * 300 / 72) + 'px'; }
+            if (prop === 'color') { data.color = val; span.style.color = val; }
+            if (prop === 'font') { data.font = val; span.style.fontFamily = val; }
+        }
+
+        function uploadImg(e, type) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = ev => {
+                const img = new Image();
+                img.onload = () => {
+                    if (type === 'bg') state.bgImg = img;
+                    if (type === 'logo') state.logoImg = img;
+                    renderCanvas();
+                };
+                img.src = ev.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function toggleSec(type) {
+            if (type === 'microprint') state.microprint = document.getElementById('chkMicroprint').checked;
+            if (type === 'void') state.voidMark = document.getElementById('chkVoid').checked;
+            renderCanvas();
+        }
+
+        function flipCheck() {
+            state.isBack = !state.isBack;
+            document.querySelectorAll('.overlay').forEach(e => e.style.display = state.isBack ? 'none' : 'block');
+            renderCanvas();
+        }
+
+        // --- Boot ---
+        initDashboard();
+    </script>
 </body>
 </html>
