@@ -2,527 +2,111 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CheckStudio Mobile Web</title>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Caveat:wght@400;700&display=swap');
-
-        :root {
-            --bg: #121212;
-            --panel: #1E1E24;
-            --border: #333;
-            --text: #E0E0E0;
-            --accent: #4CAF50;
-            --blue: #117ACA;
-        }
-
-        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
-        body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-
-        /* Top Bar */
-        header { background: var(--panel); padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); z-index: 10; }
-        header h1 { font-size: 16px; font-weight: 700; letter-spacing: 0.5px; }
-        .actions { display: flex; gap: 8px; }
-        button { background: #333; color: white; border: none; padding: 8px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; }
-        button.primary { background: var(--accent); color: #000; }
-
-        /* Canvas Area */
-        .workspace { flex: 1; display: flex; justify-content: center; align-items: center; background: #0a0a0a; overflow: hidden; position: relative; padding: 16px; }
-        .paper-container { position: relative; box-shadow: 0 4px 20px rgba(0,0,0,0.8); background: white; border-radius: 2px; transform-origin: center center; touch-action: none; }
-        canvas { display: block; width: 100%; height: 100%; border-radius: 2px; }
-
-        /* Draggable Overlays */
-        .overlay { position: absolute; border: 1px dashed transparent; cursor: move; padding: 2px; touch-action: none; }
-        .overlay.active { border-color: var(--blue); background: rgba(17, 122, 202, 0.1); }
-        .overlay .text { white-space: pre; display: block; pointer-events: none; }
-        .overlay .resize-handle { position: absolute; right: -6px; bottom: -6px; width: 14px; height: 14px; background: var(--blue); border-radius: 50%; cursor: se-resize; display: none; }
-        .overlay.active .resize-handle { display: block; }
-
-        /* Bottom Drawer (Mobile UI) */
-        .drawer { background: var(--panel); border-top: 1px solid var(--border); border-radius: 16px 16px 0 0; max-height: 50vh; display: flex; flex-direction: column; transition: transform 0.3s; z-index: 10; }
-        .drawer-handle { width: 40px; height: 4px; background: #555; border-radius: 2px; margin: 8px auto; }
-        .drawer-content { overflow-y: auto; padding: 16px; padding-top: 0; }
-        
-        .section { margin-bottom: 16px; }
-        .section h3 { font-size: 11px; text-transform: uppercase; color: #888; margin-bottom: 8px; letter-spacing: 1px; }
-        .row { display: flex; gap: 8px; margin-bottom: 8px; }
-        .row > * { flex: 1; }
-        
-        input[type="text"], input[type="number"], select { width: 100%; background: #111; border: 1px solid #333; color: white; padding: 10px; border-radius: 6px; font-family: inherit; font-size: 14px; }
-        input[type="color"] { width: 100%; height: 42px; padding: 0; border: none; background: none; }
-        label { display: block; font-size: 11px; color: #aaa; margin-bottom: 4px; }
-        
-        /* Print */
-        @media print {
-            body { background: white; height: auto; overflow: visible; }
-            header, .drawer { display: none !important; }
-            .workspace { padding: 0; background: white; display: block; overflow: visible; }
-            .paper-container { box-shadow: none; transform: none !important; margin: 0; border-radius: 0; }
-            .overlay { border: none !important; background: none !important; }
-            .overlay .text { color: black !important; }
-            .resize-handle { display: none !important; }
-            @page { size: var(--page-size, 6in 2.75in); margin: 0; }
-        }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>CheckStudio Pro</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Caveat:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body>
 
-<header>
-    <h1>CheckStudio</h1>
-    <div class="actions">
-        <button onclick="toggleBack()">Flip</button>
-        <button class="primary" onclick="window.print()">Print</button>
+    <!-- DASHBOARD SCREEN -->
+    <div id="screen-dashboard" class="screen active">
+        <header class="app-header">
+            <h1>CheckStudio</h1>
+            <p>Select a template to begin</p>
+        </header>
+        <div class="dashboard-grid" id="templateGrid">
+            <!-- Templates injected via JS -->
+        </div>
+        <div class="dashboard-footer">
+            <button class="btn primary full-width" onclick="startBlank()">+ Create Blank Check</button>
+        </div>
     </div>
-</header>
 
-<div class="workspace" id="workspace">
-    <div class="paper-container" id="paperContainer" style="width: 1800px; height: 825px;">
-        <canvas id="checkCanvas" width="1800" height="825"></canvas>
-    </div>
-</div>
-
-<div class="drawer">
-    <div class="drawer-handle"></div>
-    <div class="drawer-content">
+    <!-- EDITOR SCREEN -->
+    <div id="screen-editor" class="screen">
+        <header class="editor-header">
+            <button class="icon-btn" onclick="goHome()">←</button>
+            <span class="editor-title" id="editorTitle">Editing</span>
+            <button class="icon-btn" onclick="openPreview()">👁️</button>
+        </header>
         
-        <div class="section">
-            <h3>Template & Size</h3>
-            <div class="row">
-                <select id="bankSelect" onchange="loadBank()">
-                    <option value="chase">JPMorgan Chase</option>
-                    <option value="wells">Wells Fargo</option>
-                    <option value="boa">Bank of America</option>
-                    <option value="citi">Citibank</option>
-                    <option value="usbank">U.S. Bank</option>
-                    <option value="ally">Ally Bank</option>
-                    <option value="sofi">SoFi</option>
-                    <option value="axos">Axos Bank</option>
-                    <option value="chime">Chime</option>
-                    <option value="capone">Capital One</option>
-                    <option value="blank">Blank Canvas</option>
+        <div class="canvas-workspace" id="canvasWorkspace">
+            <div class="paper-container" id="paperContainer">
+                <canvas id="checkCanvas"></canvas>
+            </div>
+        </div>
+
+        <!-- Floating Bottom Bar -->
+        <div class="floating-toolbar">
+            <button onclick="flipCheck()">Flip</button>
+            <button onclick="openDrawer('settings')">Settings</button>
+            <button class="primary" onclick="window.print()">Print</button>
+        </div>
+    </div>
+
+    <!-- PROPERTIES DRAWER (Bottom Sheet) -->
+    <div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+    <div class="bottom-sheet" id="bottomSheet">
+        <div class="sheet-handle"></div>
+        
+        <div class="sheet-content" id="sheetFieldControls">
+            <h3>Edit Field</h3>
+            <div class="control-group">
+                <label>Text</label>
+                <input type="text" id="inputText" oninput="updateField('text', this.value)">
+            </div>
+            <div class="control-row">
+                <div class="control-group">
+                    <label>Size</label>
+                    <input type="number" id="inputSize" oninput="updateField('size', this.value)">
+                </div>
+                <div class="control-group">
+                    <label>Color</label>
+                    <input type="color" id="inputColor" oninput="updateField('color', this.value)">
+                </div>
+            </div>
+            <div class="control-group">
+                <label>Font</label>
+                <select id="inputFont" onchange="updateField('font', this.value)">
+                    <option value="Inter">Sans-Serif</option>
+                    <option value="'Caveat', cursive">Handwriting</option>
+                    <option value="'Courier New', monospace">Monospace</option>
                 </select>
-                <select id="sizeSelect" onchange="setSize()">
-                    <option value="personal">Personal (6x2.75)</option>
-                    <option value="business">Business (8.5x3.5)</option>
-                </select>
             </div>
         </div>
 
-        <div class="section">
-            <h3>Uploads</h3>
-            <div class="row">
-                <button onclick="document.getElementById('bgUpload').click()">Bg Image</button>
-                <button onclick="document.getElementById('logoUpload').click()">Logo</button>
+        <div class="sheet-content" id="sheetSettingsControls" style="display:none;">
+            <h3>Check Settings</h3>
+            <div class="control-group">
+                <label>Background Image</label>
+                <input type="file" accept="image/*" onchange="uploadImg(event, 'bg')">
             </div>
-            <input type="file" id="bgUpload" accept="image/*" style="display:none" onchange="uploadImage(event, 'bg')">
-            <input type="file" id="logoUpload" accept="image/*" style="display:none" onchange="uploadImage(event, 'logo')">
-        </div>
-
-        <div class="section" id="fieldEditor">
-            <h3>Selected Field: <span id="activeFieldName" style="color:var(--accent)">None</span></h3>
-            <div class="row">
-                <div>
-                    <label>Text</label>
-                    <input type="text" id="fieldText" oninput="updateFieldText(this.value)">
-                </div>
+            <div class="control-group">
+                <label>Logo Image</label>
+                <input type="file" accept="image/*" onchange="uploadImg(event, 'logo')">
             </div>
-            <div class="row">
-                <div>
-                    <label>Font Size</label>
-                    <input type="number" id="fieldSize" onchange="updateFieldStyle('size', this.value)">
-                </div>
-                <div>
-                    <label>Ink Color</label>
-                    <input type="color" id="fieldColor" value="#000000" onchange="updateFieldStyle('color', this.value)">
-                </div>
-                <div>
-                    <label>Font Family</label>
-                    <select id="fieldFont" onchange="updateFieldStyle('font', this.value)">
-                        <option value="Inter">Sans-Serif</option>
-                        <option value="'Caveat', cursive">Handwriting</option>
-                        <option value="'Courier New', monospace">Monospace</option>
-                        <option value="Times New Roman">Serif</option>
-                    </select>
-                </div>
+            <div class="control-group">
+                <label><input type="checkbox" id="chkMicroprint" onchange="toggleSec('microprint')"> Microprint Border</label>
+            </div>
+            <div class="control-group">
+                <label><input type="checkbox" id="chkVoid" onchange="toggleSec('void')"> "VOID" Watermark</label>
             </div>
         </div>
-
-        <div class="section">
-            <h3>Security & Extras</h3>
-            <label><input type="checkbox" id="microprint" onchange="toggleMicroprint()"> Microprint Border</label>
-            <label style="margin-top: 8px;"><input type="checkbox" id="voidWatermark" onchange="toggleVoid()"> "VOID" Watermark</label>
-        </div>
-
     </div>
-</div>
 
-<script>
-// ---------- State ----------
-let state = {
-    size: 'personal',
-    isBack: false,
-    bank: 'chase',
-    bgImage: null,
-    logoImage: null,
-    microprint: false,
-    voidWatermark: false,
-    fields: {}
-};
+    <!-- PREVIEW SCREEN -->
+    <div id="screen-preview" class="screen">
+        <header class="editor-header">
+            <button class="icon-btn" onclick="closePreview()">✕</button>
+            <span class="editor-title">Print Preview</span>
+            <button class="icon-btn" onclick="window.print()">🖨️</button>
+        </header>
+        <div class="preview-workspace">
+            <img id="previewImg" src="" alt="Check Preview">
+        </div>
+    </div>
 
-// Real Bank Data
-const banks = {
-    chase: { name: 'JPMorgan Chase', addr: '270 Park Ave, New York, NY 10017', color: '#117ACA' },
-    wells: { name: 'WELLS FARGO', addr: '420 Montgomery St, San Francisco, CA 94104', color: '#D71E28' },
-    boa: { name: 'Bank of America', addr: '100 N Tryon St, Charlotte, NC 28202', color: '#E31837' },
-    citi: { name: 'Citibank', addr: '388 Greenwich St, New York, NY 10013', color: '#003B70' },
-    usbank: { name: 'U.S. Bank', addr: '800 Nicollet Mall, Minneapolis, MN 55402', color: '#D11242' },
-    ally: { name: 'ally', addr: 'P.O. Box 951, Horsham, PA 19044', color: '#6B2D5B' },
-    sofi: { name: 'SoFi', addr: '234 1st St, San Francisco, CA 94105', color: '#00A3E0' },
-    axos: { name: 'Axos Bank', addr: '9205 W Russell Rd, Las Vegas, NV 89148', color: '#002554' },
-    chime: { name: 'Chime', addr: '1 Letterman Dr, San Francisco, CA 94129', color: '#00D66B' },
-    capone: { name: 'Capital One', addr: '1680 Capital One Dr, McLean, VA 22102', color: '#004977' },
-    blank: { name: 'Bank Name', addr: 'Bank Address', color: '#000000' }
-};
-
-const fieldDefaults = {
-    personal: {
-        bankName: { x: 0.25, y: 0.35, text: '', font: 'Inter', size: 20, color: '#000000', bold: true },
-        bankAddr: { x: 0.25, y: 0.50, text: '', font: 'Inter', size: 9, color: '#333333' },
-        checkNo: { x: 5.5, y: 0.35, text: '1001', font: 'Inter', size: 10, color: '#000000' },
-        date: { x: 4.7, y: 0.35, text: 'MM/DD/YYYY', font: 'Inter', size: 11, color: '#000000' },
-        payee: { x: 1.5, y: 0.85, text: '', font: 'Inter', size: 12, color: '#000000' },
-        amountNum: { x: 4.8, y: 0.85, text: '$', font: 'Inter', size: 14, color: '#000000' },
-        amountWords: { x: 1.5, y: 1.15, text: 'Zero and 00/100', font: 'Inter', size: 11, color: '#000000' },
-        memo: { x: 0.70, y: 1.85, text: '', font: 'Inter', size: 10, color: '#000000' },
-        sigLine: { x: 4.5, y: 1.85, text: 'AUTHORIZED SIGNATURE', font: 'Inter', size: 8, color: '#000000' },
-        micr: { x: 0.25, y: 2.45, text: '⑆000000000⑆ ⑈0000000000⑈ ⑆1001', font: "'Courier New', monospace", size: 14, color: '#000000', bold: true }
-    },
-    business: {
-        bankName: { x: 0.25, y: 0.35, text: '', font: 'Inter', size: 24, color: '#000000', bold: true },
-        bankAddr: { x: 0.25, y: 0.50, text: '', font: 'Inter', size: 11, color: '#333333' },
-        checkNo: { x: 8.0, y: 0.35, text: '1001', font: 'Inter', size: 12, color: '#000000' },
-        date: { x: 7.2, y: 0.35, text: 'MM/DD/YYYY', font: 'Inter', size: 12, color: '#000000' },
-        payee: { x: 1.5, y: 0.85, text: '', font: 'Inter', size: 14, color: '#000000' },
-        amountNum: { x: 7.3, y: 0.85, text: '$', font: 'Inter', size: 16, color: '#000000' },
-        amountWords: { x: 1.5, y: 1.15, text: 'Zero and 00/100', font: 'Inter', size: 12, color: '#000000' },
-        memo: { x: 0.70, y: 2.50, text: '', font: 'Inter', size: 12, color: '#000000' },
-        sigLine: { x: 6.5, y: 2.50, text: 'AUTHORIZED SIGNATURE', font: 'Inter', size: 9, color: '#000000' },
-        micr: { x: 0.25, y: 3.20, text: '⑆000000000⑆ ⑈0000000000⑈ ⑆1001', font: "'Courier New', monospace", size: 14, color: '#000000', bold: true }
-    }
-};
-
-// ---------- Initialization ----------
-function init() {
-    setSize();
-    loadBank();
-    window.addEventListener('resize', () => render());
-}
-
-function setSize() {
-    state.size = document.getElementById('sizeSelect').value;
-    const container = document.getElementById('paperContainer');
-    const canvas = document.getElementById('checkCanvas');
-    
-    let wIn = 6, hIn = 2.75;
-    if (state.size === 'business') { wIn = 8.5; hIn = 3.5; }
-    
-    // 300 DPI
-    const pxW = wIn * 300;
-    const pxH = hIn * 300;
-    
-    canvas.width = pxW;
-    canvas.height = pxH;
-    
-    // Fit to mobile screen
-    const scale = Math.min((window.innerWidth - 32) / pxW, (window.innerHeight * 0.4) / pxH);
-    container.style.width = pxW + 'px';
-    container.style.height = pxH + 'px';
-    container.style.transform = `scale(${scale})`;
-
-    document.documentElement.style.setProperty('--page-size', `${wIn}in ${hIn}in`);
-
-    loadBank();
-}
-
-function loadBank() {
-    state.bank = document.getElementById('bankSelect').value;
-    state.isBack = false;
-    
-    const bankInfo = banks[state.bank];
-    const base = JSON.parse(JSON.stringify(fieldDefaults[state.size]));
-    
-    base.bankName.text = bankInfo.name;
-    base.bankName.color = bankInfo.color;
-    base.bankAddr.text = bankInfo.addr;
-    
-    // Adjust fields based on bank layout
-    if (state.bank === 'usbank') {
-        base.bankName.x = 3.0; // Push logo to right
-        base.bankAddr.x = 3.0;
-    }
-
-    state.fields = base;
-    buildOverlays();
-    render();
-}
-
-// ---------- Render ----------
-function render() {
-    const canvas = document.getElementById('checkCanvas');
-    const ctx = canvas.getContext('2d');
-    const w = canvas.width;
-    const h = canvas.height;
-    const scale = 300; // px per inch
-
-    ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = '#FFFFFF';
-    ctx.fillRect(0, 0, w, h);
-
-    if (state.bgImage) {
-        ctx.drawImage(state.bgImage, 0, 0, w, h);
-    }
-
-    if (!state.isBack) {
-        // Draw Lines & Boxes
-        ctx.strokeStyle = '#CCCCCC';
-        ctx.lineWidth = 2;
-
-        // Payee Line
-        ctx.beginPath(); ctx.moveTo(1.5 * scale, 0.9 * scale); ctx.lineTo(4.5 * scale, 0.9 * scale); ctx.stroke();
-        // Amount Box
-        ctx.strokeRect(4.7 * scale, 0.65 * scale, 0.9 * scale, 0.3 * scale);
-        // Words Line
-        ctx.beginPath(); ctx.moveTo(1.5 * scale, 1.2 * scale); ctx.lineTo(4.5 * scale, 1.2 * scale); ctx.stroke();
-        // Memo Line
-        ctx.beginPath(); ctx.moveTo(0.7 * scale, 1.9 * scale); ctx.lineTo(2.5 * scale, 1.9 * scale); ctx.stroke();
-        // Signature Line
-        ctx.strokeStyle = '#000000';
-        ctx.beginPath(); ctx.moveTo(4.5 * scale, 1.95 * scale); ctx.lineTo((w/scale) - 0.25 * scale, 1.95 * scale); ctx.stroke();
-
-        if (state.microprint) {
-            ctx.font = '4px Inter';
-            ctx.fillStyle = '#888888';
-            ctx.fillText('SECURITY MICROPRINT BORDER '.repeat(20), 20, 20);
-            ctx.fillText('SECURITY MICROPRINT BORDER '.repeat(20), 20, h - 20);
-        }
-
-        if (state.voidWatermark) {
-            ctx.save();
-            ctx.translate(w/2, h/2);
-            ctx.rotate(-Math.PI / 6);
-            ctx.font = 'bold 100px Inter';
-            ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
-            ctx.textAlign = 'center';
-            ctx.fillText('VOID', 0, 0);
-            ctx.restore();
-        }
-
-        if (state.logoImage) {
-            ctx.drawImage(state.logoImage, 0.25 * 300, 0.1 * 300, 120, 60);
-        }
-    } else {
-        ctx.fillStyle = '#000000';
-        ctx.font = 'bold 40px Inter';
-        ctx.fillText('ENDORSE HERE', 0.25 * 300, 0.6 * 300);
-        
-        ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(0.25 * 300, 0.7 * 300); ctx.lineTo((w/300 - 0.25) * 300, 0.7 * 300); ctx.stroke();
-        
-        ctx.font = '24px Inter';
-        ctx.fillText('DO NOT WRITE, STAMP OR SIGN BELOW THIS LINE', 0.25 * 300, 1.2 * 300);
-        ctx.beginPath(); ctx.moveTo(0.25 * 300, 1.3 * 300); ctx.lineTo((w/300 - 0.25) * 300, 1.3 * 300); ctx.stroke();
-
-        ctx.strokeRect(0.25 * 300, 1.5 * 300, 0.2 * 300, 0.2 * 300);
-        ctx.font = '20px Inter';
-        ctx.fillText('CHECK HERE FOR MOBILE DEPOSIT', 0.6 * 300, 1.65 * 300);
-    }
-}
-
-// ---------- Interactive Fields ----------
-function buildOverlays() {
-    const container = document.getElementById('paperContainer');
-    document.querySelectorAll('.overlay').forEach(e => e.remove());
-
-    Object.keys(state.fields).forEach(key => {
-        const data = state.fields[key];
-        const div = document.createElement('div');
-        div.className = 'overlay';
-        div.id = 'ov_' + key;
-        
-        div.style.left = (data.x * 300) + 'px';
-        div.style.top = (data.y * 300) + 'px';
-        
-        const span = document.createElement('span');
-        span.className = 'text';
-        span.innerText = data.text;
-        span.style.fontFamily = data.font;
-        span.style.fontSize = (data.size * 300 / 72) + 'px';
-        span.style.color = data.color;
-        span.style.fontWeight = data.bold ? 'bold' : 'normal';
-        
-        const resize = document.createElement('div');
-        resize.className = 'resize-handle';
-        
-        div.appendChild(span);
-        div.appendChild(resize);
-        container.appendChild(div);
-
-        // Draggable (Touch)
-        let isDragging = false;
-        let startX, startY, origX, origY;
-
-        div.addEventListener('touchstart', (e) => {
-            if (e.target === resize) return;
-            isDragging = true;
-            startX = e.touches[0].clientX;
-            startY = e.touches[0].clientY;
-            origX = data.x;
-            origY = data.y;
-            selectField(key);
-            e.preventDefault();
-        }, {passive: false});
-
-        window.addEventListener('touchmove', (e) => {
-            if (!isDragging) return;
-            const dx = (e.touches[0].clientX - startX) / (300 * getScale()); 
-            const dy = (e.touches[0].clientY - startY) / (300 * getScale());
-            data.x = origX + dx;
-            data.y = origY + dy;
-            div.style.left = (data.x * 300) + 'px';
-            div.style.top = (data.y * 300) + 'px';
-            e.preventDefault();
-        }, {passive: false});
-
-        window.addEventListener('touchend', () => { isDragging = false; });
-
-        // Resizable
-        let isResizing = false;
-        let startFontSize;
-
-        resize.addEventListener('touchstart', (e) => {
-            e.stopPropagation();
-            isResizing = true;
-            startX = e.touches[0].clientX;
-            startFontSize = data.size;
-            selectField(key);
-            e.preventDefault();
-        }, {passive: false});
-
-        window.addEventListener('touchmove', (e) => {
-            if (!isResizing) return;
-            const dx = e.touches[0].clientX - startX;
-            data.size = Math.max(4, startFontSize + (dx / 10));
-            span.style.fontSize = (data.size * 300 / 72) + 'px';
-            e.preventDefault();
-        }, {passive: false});
-
-        window.addEventListener('touchend', () => { isResizing = false; });
-    });
-}
-
-function getScale() {
-    const container = document.getElementById('paperContainer');
-    const transform = container.style.transform;
-    const match = transform.match(/scale\(([^)]+)\)/);
-    return match ? parseFloat(match[1]) : 1;
-}
-
-let activeFieldKey = null;
-
-function selectField(key) {
-    activeFieldKey = key;
-    document.querySelectorAll('.overlay').forEach(e => e.classList.remove('active'));
-    const el = document.getElementById('ov_' + key);
-    if (el) el.classList.add('active');
-
-    const data = state.fields[key];
-    document.getElementById('fieldText').value = data.text;
-    document.getElementById('fieldSize').value = data.size;
-    document.getElementById('fieldColor').value = data.color;
-    document.getElementById('fieldFont').value = data.font;
-    document.getElementById('activeFieldName').innerText = key.toUpperCase();
-}
-
-function updateFieldText(val) {
-    if (!activeFieldKey) return;
-    state.fields[activeFieldKey].text = val;
-    document.querySelector('#ov_' + activeFieldKey + ' .text').innerText = val;
-    
-    if (activeFieldKey === 'amountNum') {
-        const num = parseFloat(val.replace('$', '')) || 0;
-        state.fields['amountWords'].text = numToWords(num);
-        document.querySelector('#ov_amountWords .text').innerText = state.fields['amountWords'].text;
-    }
-}
-
-function updateFieldStyle(prop, val) {
-    if (!activeFieldKey) return;
-    const data = state.fields[activeFieldKey];
-    const span = document.querySelector('#ov_' + activeFieldKey + ' .text');
-
-    if (prop === 'size') {
-        data.size = parseFloat(val);
-        span.style.fontSize = (data.size * 300 / 72) + 'px';
-    } else if (prop === 'color') {
-        data.color = val;
-        span.style.color = val;
-    } else if (prop === 'font') {
-        data.font = val;
-        span.style.fontFamily = val;
-    }
-}
-
-function uploadImage(event, type) {
-    const file = event.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => {
-            if (type === 'bg') state.bgImage = img;
-            if (type === 'logo') state.logoImage = img;
-            render();
-        };
-        img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
-}
-
-function toggleBack() {
-    state.isBack = !state.isBack;
-    document.querySelectorAll('.overlay').forEach(e => e.style.display = state.isBack ? 'none' : 'block');
-    render();
-}
-
-function toggleMicroprint() {
-    state.microprint = document.getElementById('microprint').checked;
-    render();
-}
-
-function toggleVoid() {
-    state.voidWatermark = document.getElementById('voidWatermark').checked;
-    render();
-}
-
-// Amount to Words
-const ONES = ['','one','two','three','four','five','six','seven','eight','nine','ten','eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen'];
-const TENS = ['','','twenty','thirty','forty','fifty','sixty','seventy','eighty','ninety'];
-function numToWords(n) {
-    if (n === 0) return 'Zero and 00/100';
-    const dollars = Math.floor(n);
-    const cents = Math.round((n - dollars) * 100);
-    return chunk(dollars) + ' and ' + String(cents).padStart(2, '0') + '/100';
-}
-function chunk(n) {
-    if (n === 0) return '';
-    if (n < 20) return ONES[n];
-    if (n < 100) return TENS[Math.floor(n/10)] + (n%10 ? '-' + ONES[n%10] : '');
-    if (n < 1000) return ONES[Math.floor(n/100)] + ' hundred ' + chunk(n%100);
-    if (n < 1000000) return chunk(Math.floor(n/1000)) + ' thousand ' + chunk(n%1000);
-    return 'AMOUNT TOO LARGE';
-}
-
-init();
-</script>
+    <script src="app.js"></script>
 </body>
 </html>
